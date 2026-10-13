@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% macro hidden(t) %}<input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="tab" value="{{ t }}">{% endmacro %}
+{% macro cb(name, label, help='') %}<input type="hidden" name="_has_{{ name }}" value="1"><label class="check"><input type="checkbox" name="{{ name }}" value="1" {{ 'checked' if S[name] == '1' }}><span>{{ label }}{% if help %}<small>{{ help }}</small>{% endif %}</span></label>{% endmacro %}
+{% block content %}
+<h1>Settings</h1>
+<div class="tabs">
+  {% for key, label in [('business','Business'),('industry','Industry & features'),('tax','Tax & receipts'),('printing','Printing'),('mpesa','M-Pesa')] %}
+  <a href="?tab={{ key }}" class="{{ 'on' if tab == key }}">{{ label }}</a>
+  {% endfor %}
+  <a href="{{ url_for('admin.users') }}">Users</a>
+  <a href="{{ url_for('admin.audit_log') }}">Audit log</a>
+</div>
+
+{% if tab == 'business' %}
+<form method="post" class="card" style="max-width:640px">{{ hidden('business') }}
+  <label>Business name</label><input name="business_name" value="{{ S.business_name }}" required>
+  <label>Address / location</label><input name="business_address" value="{{ S.business_address }}">
+  <div class="row">
+    <div><label>Phone</label><input name="business_phone" value="{{ S.business_phone }}"></div>
+    <div><label>Email</label><input name="business_email" value="{{ S.business_email }}"></div>
+  </div>
+  <div class="row">
+    <div><label>KRA PIN</label><input name="kra_pin" value="{{ S.kra_pin }}"></div>
+    <div><label>Currency</label><input name="currency" value="{{ S.currency }}"></div>
+  </div>
+  <p><button class="btn">Save</button></p>
+</form>
+
+{% elif tab == 'industry' %}
+<div class="grid g2">
+  <form method="post" class="card">{{ hidden('industry') }}<input type="hidden" name="action" value="industry">
+    <h3 style="margin-top:0">Industry</h3>
+    <p class="small muted">Currently: <b>{{ industries[S.industry].label }}</b>. Switching applies that industry's recommended features, wording and service charge. Your products and sales are kept.</p>
+    <select name="industry">{% for k, ind in industries.items() %}<option value="{{ k }}" {{ 'selected' if k == S.industry }}>{{ ind.label }}</option>{% endfor %}</select>
+    <label class="check"><input type="checkbox" name="seed_categories" value="1" checked><span>Add this industry's standard categories</span></label>
+    <label class="check"><input type="checkbox" name="seed_samples" value="1"><span>Add sample items, tables / attendants</span></label>
+    <button class="btn" onclick="return confirm('Apply this industry preset? Feature switches will be reset to its defaults.')">Apply industry</button>
+  </form>
+  <form method="post" class="card">{{ hidden('industry') }}<input type="hidden" name="action" value="features">
+    <h3 style="margin-top:0">Features</h3>
+    {% for k, (label, help) in features_meta.items() %}
+    <label class="check"><input type="checkbox" name="{{ k }}" value="1" {{ 'checked' if feat[k] }}><span>{{ label }}<small>{{ help }}</small></span></label>
+    {% endfor %}
+    <button class="btn">Save features</button>
+  </form>
+</div>
+
+{% elif tab == 'tax' %}
+<form method="post" class="card" style="max-width:640px">{{ hidden('tax') }}
+  <div class="row">
+    <div><label>Default VAT rate for new items (%)</label><input name="default_tax_rate" value="{{ S.default_tax_rate }}" inputmode="decimal"></div>
+    <div><label>Service charge (%)</label><input name="service_charge_rate" value="{{ S.service_charge_rate }}" inputmode="decimal"></div>
+  </div>
+  {{ cb('prices_include_tax', 'Selling prices already include VAT', 'Normal for Kenyan retail. Untick if VAT should be added on top of prices.') }}
+  {{ cb('allow_negative_stock', 'Allow selling items that are out of stock') }}
+  <div class="row">
+    <div><label>Receipt number prefix</label><input name="receipt_prefix" value="{{ S.receipt_prefix }}" maxlength="6"></div>
+    <div><label>Paper width</label><select name="receipt_width"><option value="80" {{ 'selected' if S.receipt_width == '80' }}>80 mm</option><option value="58" {{ 'selected' if S.receipt_width == '58' }}>58 mm</option></select></div>
+  </div>
+  <label>Receipt footer</label><textarea name="receipt_footer" rows="2">{{ S.receipt_footer }}</textarea>
+  <p class="note small">KRA eTIMS: if your business is VAT-registered, KRA requires invoices to be transmitted through eTIMS. This system prints standard receipts; eTIMS integration is not included yet.</p>
+  <p><button class="btn">Save</button></p>
+</form>
+
+{% elif tab == 'printing' %}
+<div class="grid g2">
+<form method="post" class="card">{{ hidden('printing') }}
+  <label>Receipt printer</label><input name="printer_target" value="{{ S.printer_target }}">
+  <label>Kitchen printer</label><input name="kitchen_printer_target" value="{{ S.kitchen_printer_target }}">
+  {{ cb('auto_print', 'Print the receipt automatically when a sale is paid') }}
+  <p><button class="btn">Save</button></p>
+</form>
+<div class="card small">
+  <h3 style="margin-top:0">Printer options</h3>
+  <p><b class="mono">browser</b> — the browser's print dialog opens an 80 mm receipt. Works with any thermal printer installed on the computer. Tip: in Chrome, start with <span class="mono">--kiosk-printing</span> to print without the dialog.</p>
+  <p><b class="mono">network:192.168.1.50:9100</b> — send ESC/POS straight to a network (LAN/Wi-Fi) thermal printer. Opens the cash drawer on cash sales.</p>
+  <p><b class="mono">device:/dev/usb/lp0</b> — USB thermal printer on Linux.</p>
+  <form method="post" action="{{ url_for('admin.test_print') }}" class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input name="target" value="{{ S.printer_target }}"><button class="btn ghost shrink">Test print</button>
+  </form>
+</div>
+</div>
+
+{% elif tab == 'mpesa' %}
+<div class="grid g2">
+<form method="post" class="card">{{ hidden('mpesa') }}
+  <label>Mode</label>
+  <select name="mpesa_mode">
+    {% for m, l in [('simulate','Simulate (no real money — for training & testing)'),('sandbox','Sandbox (Safaricom test environment)'),('production','Production (live payments)')] %}
+    <option value="{{ m }}" {{ 'selected' if S.mpesa_mode == m }}>{{ l }}</option>{% endfor %}
+  </select>
+  <label>Consumer key</label><input name="mpesa_consumer_key" value="{{ S.mpesa_consumer_key }}" autocomplete="off">
+  <label>Consumer secret</label><input name="mpesa_consumer_secret" type="password" value="{{ masked.mpesa_consumer_secret }}" autocomplete="new-password">
+  <div class="row">
+    <div><label>Business shortcode</label><input name="mpesa_shortcode" value="{{ S.mpesa_shortcode }}"></div>
+    <div><label>Type</label><select name="mpesa_transaction_type">
+      <option value="CustomerPayBillOnline" {{ 'selected' if S.mpesa_transaction_type == 'CustomerPayBillOnline' }}>Paybill</option>
+      <option value="CustomerBuyGoodsOnline" {{ 'selected' if S.mpesa_transaction_type == 'CustomerBuyGoodsOnline' }}>Till (Buy Goods)</option></select></div>
+  </div>
+  <label>Till number <span class="muted">(Buy Goods only — leave blank for Paybill)</span></label><input name="mpesa_party_b" value="{{ S.mpesa_party_b }}">
+  <label>Passkey</label><input name="mpesa_passkey" type="password" value="{{ masked.mpesa_passkey }}" autocomplete="new-password">
+  <label>Public callback base URL <span class="muted">(optional but recommended)</span></label>
+  <input name="mpesa_callback_base" value="{{ S.mpesa_callback_base }}" placeholder="https://your-name.ngrok-free.app">
+  <p class="small muted">Callback URL Safaricom will call: <span class="mono">{{ callback_url or '(not set — payments are confirmed by polling Safaricom instead)' }}</span></p>
+  <p><button class="btn">Save</button></p>
+</form>
+<div class="card small">
+  <h3 style="margin-top:0">How M-Pesa works here</h3>
+  <p>The cashier enters the customer's number and the customer gets a PIN prompt (STK push). The till confirms automatically.</p>
+  <p><b>Confirmation:</b> if a public HTTPS callback URL is set, Safaricom tells us instantly and we store the M-Pesa receipt code. Without it, the server asks Safaricom for the result after ~12 s (works on a local network, but the receipt code is not returned).</p>
+  <p><b>Getting keys:</b> create an app on developer.safaricom.co.ke (sandbox shortcode is 174379 and the sandbox passkey is shown on the portal's test credentials page). For live payments apply for Go-Live with your Paybill/Till.</p>
+  <p><b>Paid without a prompt?</b> Cashiers can also type the code from the customer's M-Pesa SMS under "M-Pesa code".</p>
+  <form method="post" action="{{ url_for('admin.test_mpesa') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn ghost">Test connection</button></form>
+</div>
+</div>
+{% endif %}
+{% endblock %}

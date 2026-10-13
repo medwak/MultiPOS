@@ -1,0 +1,22 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Kitchen {{ sale.receipt_no }}</title>
+<style>
+  @page { size: 80mm auto; margin: 0; }
+  body { margin: 0; font: 14px/1.35 "Courier New", monospace; }
+  .paper { width: 80mm; padding: 4mm 3mm; }
+  h1 { font-size: 22px; text-align: center; margin: 0 0 4px; }
+  .head { font-weight: 700; font-size: 16px; } hr { border: 0; border-top: 1px dashed #000; }
+  .item { font-size: 18px; font-weight: 700; margin: 4px 0; } .note { margin-left: 18px; font-size: 14px; }
+</style></head>
+<body><div class="paper">
+  <h1>KITCHEN{% if reprint %} (REPRINT){% endif %}</h1>
+  <div class="head">{{ sale.table_name or sale.order_label or 'Takeaway' }} · #{{ sale.receipt_no }}</div>
+  <div>{{ sale.created_at[11:16] }} · {{ sale.cashier }}</div>
+  <hr>
+  {% for l in lines %}
+  <div class="item">{{ l.qty|qty }} × {{ l.name }}</div>
+  {% if l.note %}<div class="note">** {{ l.note }}</div>{% endif %}
+  {% endfor %}
+</div>
+{% if request.args.get('print') %}<script>window.addEventListener('load', () => setTimeout(() => window.print(), 150));</script>{% endif %}
+</body></html>

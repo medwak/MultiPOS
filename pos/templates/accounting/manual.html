@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Journal entry{% endblock %}
+{% block content %}
+<h1>Manual journal entry</h1>
+{% include "accounting/_nav.html" %}
+<p class="small muted">For opening balances, capital put in by the owner, drawings, loans and corrections. Debits must equal credits.</p>
+<form method="post" class="card" id="je">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="row">
+    <div style="flex:3"><label>Description</label><input name="description" required placeholder="e.g. Owner capital deposited to M-Pesa"></div>
+    <div><label>Date</label><input type="date" name="date" value="{{ today }}"></div>
+  </div>
+  <table style="margin-top:12px">
+    <tr><th>Account</th><th class="num">Debit</th><th class="num">Credit</th><th>Memo</th></tr>
+    {% for i in range(6) %}
+    <tr><td><select name="account"><option value=""></option>{% for a in accounts %}<option value="{{ a.code }}">{{ a.code }} {{ a.name }}</option>{% endfor %}</select></td>
+      <td><input name="debit" inputmode="decimal" class="amt d"></td><td><input name="credit" inputmode="decimal" class="amt c"></td><td><input name="memo"></td></tr>
+    {% endfor %}
+    <tr class="total"><td>Totals</td><td class="num" id="sd">0.00</td><td class="num" id="sc">0.00</td><td id="diff"></td></tr>
+  </table>
+  <p><button class="btn">Post entry</button></p>
+</form>
+<script>
+  const sum = (cls) => [...document.querySelectorAll('.amt.' + cls)].reduce((s, i) => s + (parseFloat(i.value.replace(/,/g, '')) || 0), 0);
+  document.getElementById('je').addEventListener('input', () => {
+    const d = sum('d'), c = sum('c');
+    document.getElementById('sd').textContent = d.toFixed(2); document.getElementById('sc').textContent = c.toFixed(2);
+    document.getElementById('diff').textContent = Math.abs(d - c) < 0.005 ? (d ? '✓ balanced' : '') : 'difference ' + (d - c).toFixed(2);
+  });
+</script>
+{% endblock %}

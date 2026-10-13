@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% set extra_label = {'sort_order':'Display order','seats':'Seats','commission_rate':'Commission %'}[cols[1]] %}
+{% block content %}
+<h1>{{ T.category ~ 's' if kind == 'categories' else title }}</h1>
+<p><a href="{{ url_for('admin.products') }}">← {{ T.products }}</a></p>
+<form method="post" class="card row" style="max-width:640px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div style="flex:2"><label>Name</label><input name="name" required></div>
+  <div><label>{{ extra_label }}</label><input name="{{ cols[1] }}" inputmode="decimal" value="{{ 4 if kind == 'tables' else 0 }}"></div>
+  <button class="btn shrink">Add</button>
+</form>
+<div class="table-wrap" style="max-width:640px"><table>
+  <tr><th>Name</th><th class="num">{{ extra_label }}</th><th></th></tr>
+  {% for r in rows %}
+  <tr style="{{ 'opacity:.5' if not r.active }}">
+    <td colspan="2">
+      <form method="post" class="row" style="gap:6px">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="id" value="{{ r.id }}">
+        <input name="name" value="{{ r.name }}" style="flex:2"><input name="{{ cols[1] }}" value="{{ '%g'|format(r[cols[1]]) }}" style="max-width:110px">
+        <button class="btn ghost sm shrink">Save</button>
+      </form>
+    </td>
+    <td class="num"><form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="toggle" value="{{ r.id }}"><button class="btn ghost sm">{{ 'Disable' if r.active else 'Enable' }}</button></form></td>
+  </tr>
+  {% else %}<tr><td colspan="3" class="muted">None yet.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

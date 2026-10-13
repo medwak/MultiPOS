@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ a.name }}{% endblock %}
+{% block content %}
+<h1>{{ a.code }} {{ a.name }} <span class="pill">{{ a.type }}</span></h1>
+{% include "accounting/_nav.html" %}
+<form class="toolbar no-print">
+  <div><label>From</label><input type="date" name="start" value="{{ start }}"></div>
+  <div><label>To</label><input type="date" name="end" value="{{ end }}"></div>
+  <button class="btn">Show</button>
+</form>
+<div class="table-wrap"><table class="small">
+  <tr><th>Date</th><th>#</th><th>Description</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr>
+  <tr class="sub"><td colspan="5">Opening balance</td><td class="num">{{ opening|money }}</td></tr>
+  {% for r in rows %}<tr><td>{{ r.date }}</td><td>{{ r.id }}</td><td>{{ r.description }}</td><td class="num">{{ r.debit|money if r.debit }}</td><td class="num">{{ r.credit|money if r.credit }}</td><td class="num">{{ r.balance|money }}</td></tr>{% endfor %}
+  <tr class="total"><td colspan="5">Closing balance</td><td class="num">{{ (rows[-1].balance if rows else opening)|money }}</td></tr>
+</table></div>
+{% endblock %}

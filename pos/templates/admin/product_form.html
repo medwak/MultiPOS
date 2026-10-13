@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if pid else 'New' }} {{ T.product|lower }}{% endblock %}
+{% macro money_val(v) %}{% if v is number %}{{ '%.2f'|format(v / 100) }}{% else %}{{ v or '' }}{% endif %}{% endmacro %}
+{% macro chk(name, label, help='') %}<label class="check"><input type="checkbox" name="{{ name }}" value="1" {{ 'checked' if p[name] and p[name] not in ('0', 0) }}><span>{{ label }}{% if help %}<small>{{ help }}</small>{% endif %}</span></label>{% endmacro %}
+{% block content %}
+<h1>{{ 'Edit' if pid else 'New' }} {{ T.product|lower }}</h1>
+<form method="post" class="card" style="max-width:760px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="row">
+    <div style="flex:2"><label>Name</label><input name="name" value="{{ p.name or '' }}" required autofocus></div>
+    <div><label>{{ T.category }}</label><select name="category_id"><option value="">—</option>
+      {% for c in cats %}<option value="{{ c.id }}" {{ 'selected' if c.id|string == p.category_id|string }}>{{ c.name }}</option>{% endfor %}</select></div>
+  </div>
+  <div class="row">
+    <div><label>Selling price ({{ S.currency }})</label><input name="price" value="{{ money_val(p.price) }}" inputmode="decimal" required></div>
+    <div><label>Cost price</label><input name="cost" value="{{ money_val(p.cost) }}" inputmode="decimal"></div>
+    <div><label>VAT rate (%)</label><input name="tax_rate" value="{{ '%g'|format(p.tax_rate|float) }}" inputmode="decimal"><small class="muted">16 standard, 0 zero-rated/exempt</small></div>
+  </div>
+  <div class="row">
+    <div><label>SKU / code</label><input name="sku" value="{{ p.sku or '' }}"></div>
+    {% if F.barcode %}<div><label>Barcode</label><input name="barcode" value="{{ p.barcode or '' }}" placeholder="Scan here"></div>{% endif %}
+    <div><label>Unit</label><input name="unit" value="{{ p.unit or 'pc' }}" placeholder="pc, kg, m, l, bottle"></div>
+  </div>
+  {{ chk('is_service', 'This is a service (no stock)', 'e.g. haircut, delivery, labour') }}
+  {% if F.track_stock %}
+  {{ chk('track_stock', 'Track stock for this item') }}
+  <div class="row">
+    <div><label>Reorder level</label><input name="reorder_level" value="{{ p.reorder_level|default(0) }}" inputmode="decimal"></div>
+    {% if not pid %}<div><label>Opening stock quantity</label><input name="opening_stock" inputmode="decimal" placeholder="0"><small class="muted">Valued at cost price and booked to Owner's Capital.</small></div>
+    {% else %}<div><label>Current stock</label><input value="{{ p.stock_qty|qty }}" disabled><small class="muted">Change it from the Stock page.</small></div>{% endif %}
+  </div>
+  {% endif %}
+  {% if F.decimal_qty %}{{ chk('allow_decimal', 'Sold by weight/length (allow quantities like 1.25)') }}{% endif %}
+  {% if F.expiry_tracking %}
+  <div class="row">
+    <div><label>Batch number</label><input name="batch_no" value="{{ p.batch_no or '' }}"></div>
+    <div><label>Expiry date</label><input type="date" name="expiry_date" value="{{ p.expiry_date or '' }}"></div>
+  </div>
+  {% endif %}
+  {% if F.prescriptions %}{{ chk('requires_prescription', 'Prescription only (POM)', 'The till asks for a prescription reference.') }}{% endif %}
+  {% if F.kitchen_tickets %}{{ chk('send_to_kitchen', 'Print on kitchen tickets', 'Untick for drinks the counter serves.') }}{% endif %}
+  {{ chk('active', 'Active (show on the till)') }}
+  <p><button class="btn">Save</button> <a class="btn ghost" href="{{ url_for('admin.products') }}">Cancel</a></p>
+</form>
+{% endblock %}

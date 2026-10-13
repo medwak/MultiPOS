@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Audit log{% endblock %}
+{% block content %}
+<h1>Audit log</h1>
+<p><a href="{{ url_for('admin.settings') }}">← Settings</a></p>
+<div class="table-wrap"><table class="small">
+  <tr><th>When</th><th>User</th><th>Action</th><th>Detail</th></tr>
+  {% for r in rows %}<tr><td>{{ r.created_at }}</td><td>{{ r.username or 'system' }}</td><td>{{ r.action }}</td><td>{{ r.detail or '' }}</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

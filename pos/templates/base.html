@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ S.business_name }}{% endblock %} · MultiPOS</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<meta name="csrf-token" content="{{ csrf_token }}">
+</head>
+<body class="{% block bodyclass %}{% endblock %}">
+{% if user %}
+{% set ep = request.endpoint or '' %}
+<nav class="top">
+  <span class="brand">{{ S.business_name }}<small>MultiPOS</small></span>
+  <a class="nav {{ 'on' if ep == 'main.pos' }}" href="{{ url_for('main.pos') }}">Till</a>
+  <a class="nav {{ 'on' if ep.startswith('main.sale') }}" href="{{ url_for('main.sales_list') }}">Sales</a>
+  {% if user.role in ('manager','admin') %}
+  <a class="nav {{ 'on' if ep.startswith('reports.') }}" href="{{ url_for('reports.index') }}">Reports</a>
+  <a class="nav {{ 'on' if ep.startswith('accounting.') }}" href="{{ url_for('accounting.overview') }}">Accounts</a>
+  <a class="nav {{ 'on' if ep in ('admin.products','admin.product_edit','admin.simple_list') }}" href="{{ url_for('admin.products') }}">{{ T.products }}</a>
+  {% if F.track_stock %}<a class="nav {{ 'on' if ep == 'admin.stock' }}" href="{{ url_for('admin.stock') }}">Stock</a>{% endif %}
+  {% endif %}
+  {% if user.role == 'admin' %}
+  <a class="nav {{ 'on' if ep in ('admin.settings','admin.users','admin.audit_log') }}" href="{{ url_for('admin.settings') }}">Settings</a>
+  {% endif %}
+  <span class="spacer"></span>
+  <span class="who">{{ user.full_name }} · {{ user.role }}</span>
+  <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="link">Log out</button></form>
+</nav>
+{% endif %}
+{% block body %}
+<main class="page">
+  {% with msgs = get_flashed_messages(with_categories=true) %}{% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}{% endwith %}
+  {% block content %}{% endblock %}
+</main>
+{% endblock %}
+</body>
+</html>

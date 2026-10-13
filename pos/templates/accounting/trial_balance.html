@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Trial balance{% endblock %}
+{% block content %}
+<h1>Trial balance</h1>
+{% include "accounting/_nav.html" %}
+<form class="toolbar no-print"><div><label>As at</label><input type="date" name="end" value="{{ end }}"></div><button class="btn">Show</button><button type="button" class="btn ghost" onclick="print()">Print</button></form>
+<div class="table-wrap" style="max-width:760px"><table>
+  <tr><th>Account</th><th>Type</th><th class="num">Debit</th><th class="num">Credit</th></tr>
+  {% for r in rows %}<tr><td><a href="{{ url_for('accounting.ledger', code=r.code, end=end) }}">{{ r.code }} {{ r.name }}</a></td><td class="muted">{{ r.type }}</td><td class="num">{{ r.dr|money if r.dr }}</td><td class="num">{{ r.cr|money if r.cr }}</td></tr>
+  {% else %}<tr><td colspan="4" class="muted">No entries yet</td></tr>{% endfor %}
+  <tr class="total"><td colspan="2">Totals {{ '✓' if dr == cr else '⚠ do not match' }}</td><td class="num">{{ dr|money }}</td><td class="num">{{ cr|money }}</td></tr>
+</table></div>
+{% endblock %}

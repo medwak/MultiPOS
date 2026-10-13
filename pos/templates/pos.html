@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Till{% endblock %}
+{% block bodyclass %}pos-body{% endblock %}
+{% block body %}
+<div class="pos">
+  <section class="left">
+    <div class="search">
+      <input id="search" placeholder="{{ 'Scan barcode or s' if F.barcode else 'S' }}earch {{ T.products|lower }}…" autocomplete="off" autofocus>
+    </div>
+    <div class="cats" id="cats"></div>
+    <div class="products" id="products"></div>
+  </section>
+
+  <section class="right">
+    <div class="head">
+      {% if F.tables %}<button class="btn ghost sm" id="btnTable">Table: <span id="tableName">none</span></button>{% endif %}
+      {% if F.open_orders %}<button class="btn ghost sm" id="btnOrders">Open orders <span class="pill" id="openCount">0</span></button>{% endif %}
+      <span id="orderNo" class="muted small" style="margin-left:auto"></span>
+    </div>
+    <div class="head" id="extraFields">
+      {% if F.open_orders %}<input id="orderLabel" placeholder="Order name / note (optional)">{% endif %}
+      {% if F.customer_details %}
+        <input id="custName" placeholder="Customer name">
+        <input id="custPhone" placeholder="Customer phone" inputmode="tel">
+      {% endif %}
+      {% if F.prescriptions %}<input id="rxRef" placeholder="Prescription ref (for Rx items)" style="display:none">{% endif %}
+    </div>
+    <div class="cart" id="cart"></div>
+    <div class="totals">
+      <div class="r"><span>Subtotal</span><span id="tGross">0.00</span></div>
+      <div class="r"><span><a href="#" id="btnDiscount">Discount</a></span><span id="tDisc">0.00</span></div>
+      {% if F.service_charge %}<div class="r"><span>Service charge ({{ S.service_charge_rate }}%)</span><span id="tService">0.00</span></div>{% endif %}
+      <div class="r muted small"><span>VAT {{ '(included)' if S.prices_include_tax == '1' else '' }}</span><span id="tTax">0.00</span></div>
+      <div class="r grand"><span>{{ S.currency }}</span><span id="tTotal">0.00</span></div>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" id="btnNew">New / Clear</button>
+      {% if F.open_orders %}<button class="btn ghost" id="btnHold">Save order</button>{% endif %}
+      {% if F.kitchen_tickets %}<button class="btn ghost" id="btnKitchen">Send to kitchen</button>{% endif %}
+      <button class="btn ghost" id="btnBill">Print bill</button>
+      <button class="btn big pay" id="btnPay">Pay</button>
+    </div>
+  </section>
+</div>
+
+<!-- payment -->
+<div class="modal-bg" id="payModal"><div class="modal">
+  <h2>Take payment <span class="muted small" id="payReceipt"></span></h2>
+  <div id="payForm">
+    <div class="muted small" style="text-align:center">Amount due</div>
+    <div class="due" id="payDue">0.00</div>
+    <div class="paytabs">
+      <button data-m="cash" class="on">Cash</button>
+      <button data-m="mpesa">M-Pesa prompt</button>
+      <button data-m="code">M-Pesa code</button>
+    </div>
+    <div data-pane="cash">
+      <label>Cash received</label><input id="cashIn" inputmode="decimal">
+      <div class="quick" id="quickCash"></div>
+      <p class="muted" id="changeOut"></p>
+      <button class="btn big" style="width:100%" id="doCash">Confirm cash</button>
+    </div>
+    <div data-pane="mpesa" hidden>
+      <label>Customer M-Pesa number</label><input id="mpPhone" inputmode="tel" placeholder="07XX XXX XXX">
+      <label>Amount (whole shillings)</label><input id="mpAmount" inputmode="decimal">
+      <p class="muted small">The customer gets a prompt on their phone and enters their M-Pesa PIN.
+        {% if S.mpesa_mode == 'simulate' %}<br><b style="color:var(--warn)">Simulate mode: no real money moves; it confirms after ~4 seconds.</b>{% endif %}</p>
+      <button class="btn big" style="width:100%" id="doMpesa">Send M-Pesa prompt</button>
+    </div>
+    <div data-pane="code" hidden>
+      <p class="muted small">Customer paid to your Till/Paybill directly? Type the code from the M-Pesa SMS.</p>
+      <label>M-Pesa confirmation code</label><input id="mcCode" placeholder="e.g. TJ7K2ABC9D" style="text-transform:uppercase" maxlength="10">
+      <label>Amount received</label><input id="mcAmount" inputmode="decimal">
+      <button class="btn big" style="width:100%;margin-top:12px" id="doCode">Record M-Pesa payment</button>
+    </div>
+    <div id="paidSoFar" class="small muted" style="margin-top:12px"></div>
+  </div>
+  <div id="payWaiting" class="waiting" hidden>
+    <div class="spinner"></div>
+    <b>Waiting for the customer to enter their PIN…</b>
+    <p class="muted small" id="waitMsg"></p>
+    <button class="btn ghost" id="cancelMpesa">Cancel request</button>
+  </div>
+  <div id="payDone" class="waiting" hidden>
+    <div style="font-size:44px">✓</div>
+    <h2 style="margin:4px 0">Paid</h2>
+    <p class="due" id="doneChange"></p>
+    <div class="row" style="margin-top:10px">
+      <button class="btn ghost big" id="donePrint">Print receipt</button>
+      <button class="btn big" id="doneNew">New sale</button>
+    </div>
+  </div>
+  <p style="text-align:right;margin:14px 0 0"><button class="btn ghost sm" id="payClose">Close</button></p>
+</div></div>
+
+<!-- tables -->
+<div class="modal-bg" id="tableModal"><div class="modal" style="max-width:640px">
+  <h2>Choose a table</h2>
+  <p class="muted small">Orange tables have an open order — tap to open it.</p>
+  <div class="tablegrid" id="tableGrid"></div>
+  <p style="text-align:right"><button class="btn ghost sm" data-close>Close</button></p>
+</div></div>
+
+<!-- open orders -->
+<div class="modal-bg" id="ordersModal"><div class="modal" style="max-width:560px">
+  <h2>Open orders</h2>
+  <div class="orderlist" id="orderList"></div>
+  <p style="text-align:right"><button class="btn ghost sm" data-close>Close</button></p>
+</div></div>
+
+<div class="toast" id="toast"></div>
+<iframe id="printFrame" title="print" style="position:absolute;width:0;height:0;border:0;left:-9999px"></iframe>
+
+<script>
+window.POS = {
+  features: {{ F|tojson }},
+  serviceRate: {{ (S.service_charge_rate|float) if F.service_charge else 0 }},
+  inclusive: {{ 'true' if S.prices_include_tax == '1' else 'false' }},
+  autoPrint: {{ 'true' if S.auto_print == '1' else 'false' }},
+  isManager: {{ 'true' if user.role in ('manager','admin') else 'false' }},
+  currency: {{ S.currency|tojson }}
+};
+</script>
+<script src="{{ url_for('static', filename='pos.js') }}"></script>
+{% endblock %}

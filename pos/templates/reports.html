@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="toolbar" style="justify-content:space-between">
+  <h1 style="margin:0">Reports</h1>
+  <div class="no-print">
+    <a class="btn ghost sm" href="?preset=today">Today</a>
+    <a class="btn ghost sm" href="?preset=7d">7 days</a>
+    <a class="btn ghost sm" href="?preset=month">This month</a>
+    <a class="btn ghost sm" href="?preset=30d">30 days</a>
+  </div>
+</div>
+<form class="toolbar no-print">
+  <div><label>From</label><input type="date" name="start" value="{{ start }}"></div>
+  <div><label>To</label><input type="date" name="end" value="{{ end }}"></div>
+  <button class="btn">Show</button>
+  <a class="btn ghost" href="{{ url_for('reports.z_report', day=end) }}">Z-report (end of day)</a>
+  <button type="button" class="btn ghost" onclick="window.print()">Print</button>
+</form>
+<p class="muted">{{ start }} to {{ end }}</p>
+
+<div class="grid g4">
+  <div class="stat"><div class="k">Total sales</div><div class="v">{{ sm.total|money }}</div></div>
+  <div class="stat"><div class="k">Transactions</div><div class="v">{{ sm.n }}</div></div>
+  <div class="stat"><div class="k">Average sale</div><div class="v">{{ sm.avg|money }}</div></div>
+  <div class="stat"><div class="k">Gross profit</div><div class="v">{{ sm.gross_profit|money }}</div></div>
+  <div class="stat"><div class="k">Net sales (ex VAT)</div><div class="v">{{ sm.net|money }}</div></div>
+  <div class="stat"><div class="k">VAT collected</div><div class="v">{{ sm.tax|money }}</div></div>
+  <div class="stat"><div class="k">Discounts given</div><div class="v">{{ sm.discount|money }}</div></div>
+  <div class="stat"><div class="k">Voids</div><div class="v">{{ sm.voids.n }} <span class="small muted">({{ sm.voids.t|money }})</span></div></div>
+</div>
+
+<div class="grid g2" style="margin-top:16px">
+  <div class="card"><h3 style="margin-top:0">Sales by day</h3>
+    <table class="small">{% for d in days %}<tr><td style="width:100px;white-space:nowrap">{{ d.day }}</td><td><div class="bar" style="width:{{ (d.total / day_max * 100)|round(1) }}%"></div></td><td class="num">{{ d.n }}</td><td class="num">{{ d.total|money }}</td></tr>
+    {% else %}<tr><td class="muted">No sales</td></tr>{% endfor %}</table></div>
+  <div class="card"><h3 style="margin-top:0">Payment methods</h3>
+    <table class="small"><tr><th>Method</th><th class="num">Count</th><th class="num">Amount</th></tr>
+    {% for p in payments %}<tr><td>{{ p.method }}</td><td class="num">{{ p.n }}</td><td class="num">{{ p.amount|money }}</td></tr>
+    {% else %}<tr><td colspan="3" class="muted">No payments</td></tr>{% endfor %}</table>
+    <h3>Busiest hours</h3>
+    {% set hmax = (hours|map(attribute='total')|max) if hours else 1 %}
+    <table class="small">{% for h in hours %}<tr><td style="width:60px">{{ '%02d'|format(h.hour) }}:00</td><td><div class="bar" style="width:{{ (h.total / hmax * 100)|round(1) }}%"></div></td><td class="num">{{ h.n }}</td></tr>{% endfor %}</table>
+  </div>
+</div>
+
+<div class="card"><div class="toolbar" style="justify-content:space-between;margin:0"><h3 style="margin:0">Top {{ T.products|lower }}</h3>
+  <span class="no-print"><a class="btn ghost sm" href="{{ url_for('reports.export', kind='products', start=start, end=end) }}">CSV</a>
+  <a class="btn ghost sm" href="{{ url_for('reports.export', kind='sales', start=start, end=end) }}">Sales CSV</a>
+  <a class="btn ghost sm" href="{{ url_for('reports.export', kind='items', start=start, end=end) }}">Line items CSV</a></span></div>
+  <div class="table-wrap" style="margin-top:10px"><table class="small"><tr><th>Item</th><th class="num">Qty</th><th class="num">Sales</th><th class="num">Cost</th><th class="num">Margin</th></tr>
+  {% for p in products %}<tr><td>{{ p.name }}</td><td class="num">{{ p.qty|qty }}</td><td class="num">{{ p.sales|money }}</td><td class="num">{{ p.cost|money }}</td><td class="num">{{ (p.sales - p.cost)|money }}</td></tr>
+  {% else %}<tr><td colspan="5" class="muted">No sales</td></tr>{% endfor %}</table></div></div>
+
+<div class="grid g2">
+  <div class="card"><h3 style="margin-top:0">By {{ T.category|lower }}</h3>
+    <table class="small">{% for c in categories %}<tr><td>{{ c.name }}</td><td class="num">{{ c.qty|qty }}</td><td class="num">{{ c.sales|money }}</td></tr>{% endfor %}</table></div>
+  <div class="card"><h3 style="margin-top:0">By cashier</h3>
+    <table class="small"><tr><th>Cashier</th><th class="num">Sales</th><th class="num">Discounts</th><th class="num">Total</th></tr>
+    {% for c in cashiers %}<tr><td>{{ c.name }}</td><td class="num">{{ c.n }}</td><td class="num">{{ c.discount|money }}</td><td class="num">{{ c.total|money }}</td></tr>{% endfor %}</table></div>
+  {% if F.attendants %}
+  <div class="card"><h3 style="margin-top:0">Attendant commissions</h3>
+    <table class="small"><tr><th>Attendant</th><th class="num">Services</th><th class="num">Sales</th><th class="num">Rate</th><th class="num">Commission</th></tr>
+    {% for a in attendants %}<tr><td>{{ a.name }}</td><td class="num">{{ a.services }}</td><td class="num">{{ a.sales|money }}</td><td class="num">{{ '%g'|format(a.rate) }}%</td><td class="num">{{ a.commission|int|money }}</td></tr>
+    {% else %}<tr><td colspan="5" class="muted">No services sold</td></tr>{% endfor %}</table></div>
+  {% endif %}
+  {% if F.tables %}
+  <div class="card"><h3 style="margin-top:0">By table</h3>
+    <table class="small">{% for t in tables %}<tr><td>{{ t.name }}</td><td class="num">{{ t.n }} bills</td><td class="num">{{ t.total|money }}</td></tr>{% else %}<tr><td class="muted">No table sales</td></tr>{% endfor %}</table></div>
+  {% endif %}
+  {% if F.track_stock %}
+  <div class="card"><h3 style="margin-top:0">Stock</h3>
+    <p class="small">Stock value at cost <b>{{ valuation.cost_value|money }}</b> · at selling price <b>{{ valuation.retail_value|money }}</b></p>
+    <h3>Low stock ({{ low|length }})</h3>
+    <table class="small">{% for p in low %}<tr><td>{{ p.name }}</td><td class="num">{{ p.stock_qty|qty }} {{ p.unit }}</td><td class="num muted">reorder at {{ p.reorder_level|qty }}</td></tr>{% else %}<tr><td class="muted">Nothing below reorder level</td></tr>{% endfor %}</table>
+  </div>
+  {% endif %}
+  {% if F.expiry_tracking %}
+  <div class="card"><h3 style="margin-top:0">Expired or expiring within 60 days</h3>
+    <table class="small"><tr><th>Item</th><th>Batch</th><th>Expiry</th><th class="num">Stock</th></tr>
+    {% for p in expiring %}<tr><td>{{ p.name }}</td><td>{{ p.batch_no or '' }}</td><td style="color:{{ 'var(--bad)' if p.days_left < 0 else 'var(--warn)' }}">{{ p.expiry_date }} ({{ 'expired' if p.days_left < 0 else p.days_left ~ ' days' }})</td><td class="num">{{ p.stock_qty|qty }}</td></tr>
+    {% else %}<tr><td colspan="4" class="muted">Nothing expiring soon</td></tr>{% endfor %}</table></div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Stock{% endblock %}
+{% macro product_select() %}<select name="product_id" required><option value="">Choose…</option>{% for p in prods %}<option value="{{ p.id }}">{{ p.name }} ({{ p.stock_qty|qty }} {{ p.unit }})</option>{% endfor %}</select>{% endmacro %}
+{% block content %}
+<h1>Stock</h1>
+<div class="grid g2">
+  <form method="post" class="card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="receive">
+    <h3 style="margin-top:0">Receive stock (purchase)</h3>
+    <label>Item</label>{{ product_select() }}
+    <div class="row">
+      <div><label>Quantity</label><input name="qty" inputmode="decimal" required></div>
+      <div><label>Cost per unit ({{ S.currency }})</label><input name="unit_cost" inputmode="decimal" required></div>
+    </div>
+    <label>Paid from</label>
+    <select name="paid_from"><option value="cash">Cash</option><option value="mpesa">M-Pesa</option><option value="bank">Bank</option><option value="payable">On credit (supplier owed)</option></select>
+    <label>Supplier / invoice no.</label><input name="note">
+    <p><button class="btn">Receive</button></p>
+    <p class="small muted">Adds to stock, updates average cost and posts: Dr Inventory / Cr Cash, M-Pesa, Bank or Accounts Payable.</p>
+  </form>
+  <form method="post" class="card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="adjust">
+    <h3 style="margin-top:0">Stock count / adjustment</h3>
+    <label>Item</label>{{ product_select() }}
+    <label>Actual quantity counted</label><input name="new_qty" inputmode="decimal" required>
+    <label>Reason</label><input name="note" placeholder="Stock take, damaged, expired…">
+    <p><button class="btn ghost">Adjust</button></p>
+    <p class="small muted">The difference is valued at cost and posted to Stock Adjustments / Shrinkage.</p>
+  </form>
+</div>
+<h2>Recent movements</h2>
+<div class="table-wrap"><table class="small">
+  <tr><th>When</th><th>Item</th><th>Reason</th><th class="num">Change</th><th class="num">Unit cost</th><th>By</th><th>Note</th></tr>
+  {% for m in moves %}<tr><td>{{ m.created_at[:16] }}</td><td>{{ m.name }}</td><td>{{ m.reason }}{% if m.reason in ('sale','void') and m.ref_id %} <a href="{{ url_for('main.sale_detail', sale_id=m.ref_id) }}">#{{ m.ref_id }}</a>{% endif %}</td>
+    <td class="num" style="color:{{ 'var(--brand)' if m.qty_change > 0 else 'var(--bad)' }}">{{ '+' if m.qty_change > 0 }}{{ m.qty_change|qty }} {{ m.unit }}</td><td class="num">{{ m.unit_cost|money }}</td><td>{{ m.who or '' }}</td><td>{{ m.note or '' }}</td></tr>
+  {% else %}<tr><td colspan="7" class="muted">No movements yet</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

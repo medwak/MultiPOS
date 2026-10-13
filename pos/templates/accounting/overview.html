@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Accounts{% endblock %}
+{% macro rows(list) %}{% for r in list %}<tr><td>&nbsp;&nbsp;<a href="{{ url_for('accounting.ledger', code=r.code, start=start, end=end) }}">{{ r.code }} {{ r.name }}</a></td><td class="num">{{ r.balance|money }}</td></tr>{% endfor %}{% endmacro %}
+{% block content %}
+<h1>Accounts</h1>
+{% include "accounting/_nav.html" %}
+<form class="toolbar no-print">
+  <div><label>From</label><input type="date" name="start" value="{{ start }}"></div>
+  <div><label>To</label><input type="date" name="end" value="{{ end }}"></div>
+  <button class="btn">Show</button><button type="button" class="btn ghost" onclick="print()">Print</button>
+</form>
+<div class="grid g2">
+  <div class="card">
+    <h3 style="margin-top:0">Profit & loss <span class="muted small">{{ start }} → {{ end }}</span></h3>
+    <table>
+      <tr class="sub"><td>Income</td><td></td></tr>{{ rows(pl.income) }}
+      <tr><td><b>Total income</b></td><td class="num"><b>{{ pl.total_income|money }}</b></td></tr>
+      <tr class="sub"><td>Cost of sales</td><td></td></tr>{{ rows(pl.cogs) }}
+      <tr><td><b>Gross profit</b></td><td class="num"><b>{{ pl.gross_profit|money }}</b></td></tr>
+      <tr class="sub"><td>Operating expenses</td><td></td></tr>{{ rows(pl.expenses) }}
+      <tr><td><b>Total expenses</b></td><td class="num"><b>{{ pl.total_expenses|money }}</b></td></tr>
+      <tr class="total"><td>Net {{ 'profit' if pl.net_profit >= 0 else 'loss' }}</td><td class="num" style="color:{{ 'var(--brand)' if pl.net_profit >= 0 else 'var(--bad)' }}">{{ pl.net_profit|money }}</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Balance sheet <span class="muted small">as at {{ end }}</span></h3>
+    <table>
+      <tr class="sub"><td>Assets</td><td></td></tr>{{ rows(bs.assets) }}
+      <tr class="total"><td>Total assets</td><td class="num">{{ bs.total_assets|money }}</td></tr>
+      <tr class="sub"><td>Liabilities</td><td></td></tr>{{ rows(bs.liabilities) }}
+      <tr><td><b>Total liabilities</b></td><td class="num"><b>{{ bs.total_liabilities|money }}</b></td></tr>
+      <tr class="sub"><td>Equity</td><td></td></tr>{{ rows(bs.equity) }}
+      <tr><td>&nbsp;&nbsp;Retained / current earnings</td><td class="num">{{ bs.earnings|money }}</td></tr>
+      <tr><td><b>Total equity</b></td><td class="num"><b>{{ bs.total_equity|money }}</b></td></tr>
+      <tr class="total"><td>Liabilities + equity</td><td class="num">{{ (bs.total_liabilities + bs.total_equity)|money }}</td></tr>
+    </table>
+    <p class="small {{ 'muted' if bs.balanced else '' }}" style="{{ '' if bs.balanced else 'color:var(--bad)' }}">{{ '✓ Balanced' if bs.balanced else '⚠ Not balanced — check manual entries' }}</p>
+  </div>
+</div>
+<p class="small muted">Every sale, void, stock purchase and expense is recorded automatically with double-entry bookkeeping. Click an account to see its ledger.</p>
+{% endblock %}

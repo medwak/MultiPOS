@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% set s = d.sale %}
+{% block title %}{{ s.receipt_no }}{% endblock %}
+{% block content %}
+<div class="toolbar" style="justify-content:space-between;align-items:center">
+  <h1 style="margin:0">{{ s.receipt_no }} <span class="pill {{ s.status }}">{{ s.status.replace('_',' ') }}</span></h1>
+  <div>
+    <a class="btn ghost" href="{{ url_for('main.receipt', sale_id=s.id) }}" target="_blank">View / print receipt</a>
+    {% if s.status in ('open','pending_payment') %}<a class="btn" href="{{ url_for('main.pos') }}">Open in till</a>{% endif %}
+  </div>
+</div>
+<div class="grid g2">
+  <div class="card">
+    <h3 style="margin-top:0">Items</h3>
+    <table>
+      <tr><th>Item</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Total</th></tr>
+      {% for it in d['items'] %}
+      <tr><td>{{ it.name }}{% if it.attendant %}<div class="small muted">by {{ it.attendant }}</div>{% endif %}{% if it.note %}<div class="small muted">{{ it.note }}</div>{% endif %}</td>
+        <td class="num">{{ it.qty|qty }}</td><td class="num">{{ it.unit_price|money }}</td><td class="num">{{ it.line_gross|money }}</td></tr>
+      {% endfor %}
+      <tr><td colspan="3">Subtotal</td><td class="num">{{ s.gross|money }}</td></tr>
+      {% if s.discount %}<tr><td colspan="3">Discount</td><td class="num">-{{ s.discount|money }}</td></tr>{% endif %}
+      {% if s.service_charge %}<tr><td colspan="3">Service charge</td><td class="num">{{ s.service_charge|money }}</td></tr>{% endif %}
+      <tr><td colspan="3" class="muted">VAT{{ ' (included)' if S.prices_include_tax == '1' }}</td><td class="num muted">{{ s.tax|money }}</td></tr>
+      <tr class="total"><td colspan="3">Total</td><td class="num">{{ s.total|money }}</td></tr>
+    </table>
+  </div>
+  <div>
+    <div class="card">
+      <h3 style="margin-top:0">Details</h3>
+      <table class="small">
+        <tr><td>Cashier</td><td>{{ s.cashier }}</td></tr>
+        <tr><td>Created</td><td>{{ s.created_at }}</td></tr>
+        {% if s.completed_at %}<tr><td>Completed</td><td>{{ s.completed_at }}</td></tr>{% endif %}
+        {% if s.table_name %}<tr><td>Table</td><td>{{ s.table_name }}</td></tr>{% endif %}
+        {% if s.customer_name or s.customer_phone %}<tr><td>Customer</td><td>{{ s.customer_name }} {{ s.customer_phone }}</td></tr>{% endif %}
+        {% if s.prescription_ref %}<tr><td>Prescription</td><td>{{ s.prescription_ref }}</td></tr>{% endif %}
+        {% if s.status == 'voided' %}<tr><td>Voided</td><td>{{ s.voided_at }} — {{ s.void_reason }}</td></tr>{% endif %}
+      </table>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Payments</h3>
+      <table class="small">
+        <tr><th>Method</th><th>Reference</th><th>Status</th><th class="num">Amount</th></tr>
+        {% for p in all_pays %}
+        <tr><td>{{ {'cash':'Cash','mpesa':'M-Pesa prompt','mpesa_manual':'M-Pesa code'}[p.method] }}{% if p.phone %}<div class="muted">{{ p.phone }}</div>{% endif %}</td>
+          <td class="mono">{{ p.reference or '' }}{% if p.result_desc and p.status != 'completed' %}<div class="muted">{{ p.result_desc }}</div>{% endif %}</td>
+          <td><span class="pill {{ 'completed' if p.status == 'completed' else 'voided' if p.status in ('failed','cancelled') else 'open' }}">{{ p.status }}</span></td>
+          <td class="num">{{ p.amount|money }}{% if p.change_given %}<div class="muted">change {{ p.change_given|money }}</div>{% endif %}</td></tr>
+        {% else %}<tr><td colspan="4" class="muted">No payments</td></tr>{% endfor %}
+      </table>
+    </div>
+    {% if user.role in ('manager','admin') and s.status != 'voided' %}
+    <div class="card">
+      <h3 style="margin-top:0">Void this sale</h3>
+      <p class="small muted">Returns stock and posts reversing accounting entries. M-Pesa money must be refunded separately through your M-Pesa business portal.</p>
+      <form method="post" action="{{ url_for('main.void', sale_id=s.id) }}" onsubmit="return confirm('Void {{ s.receipt_no }}?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="row"><input name="reason" placeholder="Reason" required><button class="btn bad shrink">Void</button></div>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% if journal and user.role in ('manager','admin') %}
+<h2>Accounting entries</h2>
+<div class="table-wrap"><table class="small">
+  <tr><th>Entry</th><th>Account</th><th class="num">Debit</th><th class="num">Credit</th></tr>
+  {% for j in journal %}<tr><td>#{{ j.id }} {{ j.description }}</td><td>{{ j.code }} {{ j.name }}</td><td class="num">{{ j.debit|money if j.debit }}</td><td class="num">{{ j.credit|money if j.credit }}</td></tr>{% endfor %}
+</table></div>
+{% endif %}
+{% endblock %}

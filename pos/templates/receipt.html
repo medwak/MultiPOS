@@ -1,0 +1,70 @@
+{% set s = d.sale %}{% set w = '58mm' if S.receipt_width == '58' else '80mm' %}
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Receipt {{ s.receipt_no }}</title>
+<style>
+  @page { size: {{ w }} auto; margin: 0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #eee; font: 12px/1.35 "Courier New", ui-monospace, monospace; color: #000; }
+  .paper { width: {{ w }}; margin: 10px auto; background: #fff; padding: 4mm 3mm; }
+  .c { text-align: center; } .b { font-weight: 700; } .big { font-size: 16px; font-weight: 700; }
+  hr { border: 0; border-top: 1px dashed #000; margin: 5px 0; }
+  table { width: 100%; border-collapse: collapse; } td { padding: 1px 0; vertical-align: top; }
+  td.r { text-align: right; white-space: nowrap; padding-left: 6px; }
+  .sub td { font-size: 11px; color: #222; }
+  .tot td { font-size: 15px; font-weight: 700; padding-top: 3px; }
+  .warn { border: 2px solid #000; padding: 3px; text-align: center; font-weight: 700; margin: 6px 0; }
+  .bar { text-align: center; margin: 10px; font-family: system-ui, sans-serif; }
+  .bar button { font-size: 15px; padding: 8px 18px; margin: 0 4px; cursor: pointer; }
+  @media print { body { background: #fff; } .paper { margin: 0; width: 100%; } .bar { display: none; } }
+</style></head>
+<body>
+<div class="bar"><button onclick="window.print()">Print</button><button onclick="history.length > 1 ? history.back() : window.close()">Back</button></div>
+<div class="paper">
+  <div class="c big">{{ S.business_name }}</div>
+  {% if S.business_address %}<div class="c">{{ S.business_address }}</div>{% endif %}
+  {% if S.business_phone %}<div class="c">Tel: {{ S.business_phone }}</div>{% endif %}
+  {% if S.kra_pin %}<div class="c">PIN: {{ S.kra_pin }}</div>{% endif %}
+  <hr>
+  <div class="c b">{% if s.status == 'completed' %}SALES RECEIPT{% elif s.status == 'voided' %}*** VOIDED ***{% else %}BILL — NOT PAID{% endif %}</div>
+  <table>
+    <tr><td>No: {{ s.receipt_no }}</td><td class="r">{{ (s.completed_at or s.created_at)[:16] }}</td></tr>
+    <tr><td colspan="2">Served by: {{ s.cashier }}</td></tr>
+    {% if s.table_name %}<tr><td colspan="2">Table: {{ s.table_name }}</td></tr>{% endif %}
+    {% if s.order_label %}<tr><td colspan="2">Ref: {{ s.order_label }}</td></tr>{% endif %}
+    {% if s.customer_name or s.customer_phone %}<tr><td colspan="2">Customer: {{ s.customer_name }} {{ s.customer_phone }}</td></tr>{% endif %}
+    {% if s.prescription_ref %}<tr><td colspan="2">Prescription: {{ s.prescription_ref }}</td></tr>{% endif %}
+  </table>
+  <hr>
+  <table>
+    {% for it in d['items'] %}
+    <tr><td colspan="2">{{ it.name }}</td></tr>
+    <tr class="sub"><td>&nbsp;&nbsp;{{ it.qty|qty }}{% if it.unit and it.unit != 'pc' %} {{ it.unit }}{% endif %} × {{ it.unit_price|money }}</td><td class="r">{{ it.line_gross|money }}</td></tr>
+    {% if it.attendant %}<tr class="sub"><td colspan="2">&nbsp;&nbsp;by {{ it.attendant }}</td></tr>{% endif %}
+    {% if it.note %}<tr class="sub"><td colspan="2">&nbsp;&nbsp;* {{ it.note }}</td></tr>{% endif %}
+    {% endfor %}
+  </table>
+  <hr>
+  <table>
+    <tr><td>Subtotal</td><td class="r">{{ s.gross|money }}</td></tr>
+    {% if s.discount %}<tr><td>Discount</td><td class="r">-{{ s.discount|money }}</td></tr>{% endif %}
+    {% if s.service_charge %}<tr><td>Service charge ({{ S.service_charge_rate }}%)</td><td class="r">{{ s.service_charge|money }}</td></tr>{% endif %}
+    {% if S.prices_include_tax != '1' and s.tax %}<tr><td>VAT</td><td class="r">{{ s.tax|money }}</td></tr>{% endif %}
+    <tr class="tot"><td>TOTAL {{ S.currency }}</td><td class="r">{{ s.total|money }}</td></tr>
+    {% for p in d.payments %}
+    <tr><td>{{ 'Cash' if p.method == 'cash' else 'M-Pesa' }}{% if p.reference %} {{ p.reference }}{% endif %}</td><td class="r">{{ (p.tendered or p.amount)|money }}</td></tr>
+    {% endfor %}
+    {% if s.change_due %}<tr class="b"><td>CHANGE</td><td class="r">{{ s.change_due|money }}</td></tr>{% endif %}
+    {% if s.status != 'completed' and s.paid %}<tr class="b"><td>BALANCE DUE</td><td class="r">{{ (s.total - s.paid)|money }}</td></tr>{% endif %}
+  </table>
+  <hr>
+  <table class="sub">
+    <tr><td>VAT rate</td><td class="r">Net</td><td class="r">VAT</td></tr>
+    {% for v in d.vat %}<tr><td>{{ '%g'|format(v.tax_rate) }}%</td><td class="r">{{ v.net|money }}</td><td class="r">{{ v.tax|money }}</td></tr>{% endfor %}
+  </table>
+  {% set ns = namespace(sim=false) %}{% for p in d.payments %}{% if p.reference and p.reference.startswith('SIM') %}{% set ns.sim = true %}{% endif %}{% endfor %}
+  {% if ns.sim %}<div class="warn">SIMULATED M-PESA — NOT REAL MONEY</div>{% endif %}
+  {% if s.status == 'voided' %}<div class="warn">VOIDED: {{ s.void_reason }}</div>{% endif %}
+  {% if S.receipt_footer %}<hr><div class="c">{{ S.receipt_footer }}</div>{% endif %}
+</div>
+{% if autoprint %}<script>window.addEventListener('load', () => setTimeout(() => window.print(), 150));</script>{% endif %}
+</body></html>

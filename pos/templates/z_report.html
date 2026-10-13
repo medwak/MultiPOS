@@ -1,0 +1,36 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Z-report {{ day }}</title>
+<style>
+  @page { size: 80mm auto; margin: 0; }
+  body { margin: 0; background: #eee; font: 12px/1.4 "Courier New", monospace; }
+  .paper { width: 80mm; margin: 10px auto; background: #fff; padding: 4mm 3mm; }
+  .c { text-align: center; } .b { font-weight: 700; } hr { border: 0; border-top: 1px dashed #000; }
+  table { width: 100%; border-collapse: collapse; } td.r { text-align: right; white-space: nowrap; }
+  .bar { text-align: center; margin: 10px; font-family: system-ui; }
+  @media print { body { background: #fff; } .paper { margin: 0; } .bar { display: none; } }
+</style></head><body>
+<div class="bar"><form><input type="date" name="day" value="{{ day }}"> <button>Show</button> <button type="button" onclick="print()">Print</button> <a href="{{ url_for('reports.index') }}">Back</a></form></div>
+<div class="paper">
+  <div class="c b" style="font-size:15px">{{ S.business_name }}</div>
+  <div class="c b">Z-REPORT · END OF DAY</div>
+  <div class="c">{{ day }}</div>
+  <hr>
+  <table>
+    <tr><td>Transactions</td><td class="r">{{ sm.n }}</td></tr>
+    <tr><td>Gross sales</td><td class="r">{{ sm.gross|money }}</td></tr>
+    <tr><td>Discounts</td><td class="r">-{{ sm.discount|money }}</td></tr>
+    <tr><td>Service charge</td><td class="r">{{ sm.service|money }}</td></tr>
+    <tr><td>Net (ex VAT)</td><td class="r">{{ sm.net|money }}</td></tr>
+    <tr><td>VAT</td><td class="r">{{ sm.tax|money }}</td></tr>
+    <tr class="b"><td>TOTAL SALES</td><td class="r">{{ sm.total|money }}</td></tr>
+    <tr><td>Voids ({{ sm.voids.n }})</td><td class="r">{{ sm.voids.t|money }}</td></tr>
+  </table>
+  <hr><div class="b">PAYMENTS</div>
+  <table>{% for p in payments %}<tr><td>{{ p.method }} ({{ p.n }})</td><td class="r">{{ p.amount|money }}</td></tr>{% endfor %}</table>
+  <p>Cash expected in drawer: <b>{{ (payments|selectattr('method','equalto','Cash')|sum(attribute='amount'))|money }}</b></p>
+  <hr><div class="b">BY CASHIER</div>
+  <table>{% for c in cashiers %}<tr><td>{{ c.name }} ({{ c.n }})</td><td class="r">{{ c.total|money }}</td></tr>{% endfor %}</table>
+  <hr><div class="b">BY {{ T.category|upper }}</div>
+  <table>{% for c in categories %}<tr><td>{{ c.name }}</td><td class="r">{{ c.sales|money }}</td></tr>{% endfor %}</table>
+  <hr><p>Counted cash: ____________</p><p>Signed: ____________</p>
+</div></body></html>

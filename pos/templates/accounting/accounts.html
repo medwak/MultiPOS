@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Chart of accounts{% endblock %}
+{% block content %}
+<h1>Chart of accounts</h1>
+{% include "accounting/_nav.html" %}
+<form method="post" class="card row" style="max-width:760px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div style="max-width:110px"><label>Code</label><input name="code" required inputmode="numeric"></div>
+  <div style="flex:2"><label>Name</label><input name="name" required></div>
+  <div><label>Type</label><select name="type">{% for t in ['asset','liability','equity','income','expense'] %}<option>{{ t }}</option>{% endfor %}</select></div>
+  <button class="btn shrink">Add account</button>
+</form>
+<div class="table-wrap" style="max-width:760px"><table>
+  <tr><th>Code</th><th>Name</th><th>Type</th><th class="num">Balance</th></tr>
+  {% for r in rows %}<tr><td class="mono">{{ r.code }}</td><td><a href="{{ url_for('accounting.ledger', code=r.code) }}">{{ r.name }}</a></td><td class="muted">{{ r.type }}</td><td class="num">{{ r.balance|money }}</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

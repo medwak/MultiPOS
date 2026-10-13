@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Record expense{% endblock %}
+{% block content %}
+<h1>Record an expense</h1>
+{% include "accounting/_nav.html" %}
+<div class="grid g2">
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Expense type</label><select name="account" required>{% for a in accounts %}<option value="{{ a.code }}">{{ a.code }} {{ a.name }}</option>{% endfor %}</select>
+  <div class="row">
+    <div><label>Amount ({{ S.currency }})</label><input name="amount" inputmode="decimal" required></div>
+    <div><label>Date</label><input type="date" name="date" value="{{ today }}"></div>
+  </div>
+  <label>Paid from</label><select name="paid_from"><option value="cash">Cash (till)</option><option value="mpesa">M-Pesa</option><option value="bank">Bank</option><option value="payable">Not paid yet (owed)</option></select>
+  <label>Description</label><input name="description" placeholder="e.g. KPLC tokens, October rent">
+  <p><button class="btn">Record expense</button></p>
+</form>
+<div class="card"><h3 style="margin-top:0">Recent expenses</h3>
+  <table class="small">{% for r in recent %}<tr><td>{{ r.date }}</td><td>{{ r.description }}<div class="muted">{{ r.name }}</div></td><td class="num">{{ r.debit|money }}</td></tr>{% else %}<tr><td class="muted">None yet</td></tr>{% endfor %}</table>
+</div>
+</div>
+{% endblock %}

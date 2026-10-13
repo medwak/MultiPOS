@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+{% block content %}
+<h1>Users</h1>
+<p><a href="{{ url_for('admin.settings') }}">← Settings</a></p>
+<form method="post" class="card row">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="create">
+  <div><label>Full name</label><input name="full_name" required></div>
+  <div><label>Username</label><input name="username" required autocomplete="off"></div>
+  <div><label>Password</label><input name="password" type="password" required minlength="4" autocomplete="new-password"></div>
+  <div><label>Role</label><select name="role">{% for r in roles %}<option {{ 'selected' if r == 'cashier' }}>{{ r }}</option>{% endfor %}</select></div>
+  <button class="btn shrink">Add user</button>
+</form>
+<p class="small muted"><b>Cashier</b>: till and own sales (discount up to 10%). <b>Manager</b>: plus reports, accounts, {{ T.products|lower }}, stock and voids. <b>Admin</b>: everything including settings and users.</p>
+<div class="table-wrap"><table>
+  <tr><th>Name</th><th>Username</th><th>Role</th><th>Status</th><th>Reset password</th><th></th></tr>
+  {% for u in rows %}
+  <tr style="{{ 'opacity:.5' if not u.active }}">
+    <td>{{ u.full_name }}</td><td class="mono">{{ u.username }}</td>
+    <td><form method="post" class="row" style="gap:4px"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="role"><input type="hidden" name="id" value="{{ u.id }}">
+      <select name="role" onchange="this.form.submit()" {{ 'disabled' if u.id == user.id }}>{% for r in roles %}<option {{ 'selected' if r == u.role }}>{{ r }}</option>{% endfor %}</select></form></td>
+    <td>{{ 'active' if u.active else 'disabled' }}</td>
+    <td><form method="post" class="row" style="gap:4px"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="reset"><input type="hidden" name="id" value="{{ u.id }}">
+      <input name="password" type="password" placeholder="New password" autocomplete="new-password"><button class="btn ghost sm shrink">Set</button></form></td>
+    <td>{% if u.id != user.id %}<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="toggle"><input type="hidden" name="id" value="{{ u.id }}"><button class="btn ghost sm">{{ 'Disable' if u.active else 'Enable' }}</button></form>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

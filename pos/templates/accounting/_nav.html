@@ -1,0 +1,9 @@
+{% set ep = request.endpoint %}
+<div class="tabs">
+  <a href="{{ url_for('accounting.overview') }}" class="{{ 'on' if ep == 'accounting.overview' }}">Profit & loss / Balance sheet</a>
+  <a href="{{ url_for('accounting.trial_balance') }}" class="{{ 'on' if ep == 'accounting.trial_balance' }}">Trial balance</a>
+  <a href="{{ url_for('accounting.journal') }}" class="{{ 'on' if ep == 'accounting.journal' }}">Journal</a>
+  <a href="{{ url_for('accounting.accounts') }}" class="{{ 'on' if ep in ('accounting.accounts','accounting.ledger') }}">Chart of accounts</a>
+  <a href="{{ url_for('accounting.expense') }}" class="{{ 'on' if ep == 'accounting.expense' }}">Record expense</a>
+  {% if user.role == 'admin' %}<a href="{{ url_for('accounting.manual') }}" class="{{ 'on' if ep == 'accounting.manual' }}">Journal entry</a>{% endif %}
+</div>

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Log in{% endblock %}
+{% block body %}
+<div class="auth">
+  {% with msgs = get_flashed_messages(with_categories=true) %}{% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}{% endwith %}
+  <div class="card">
+    <h1>{{ S.business_name }}</h1>
+    <p class="muted">Log in to the till</p>
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Username</label><input name="username" autofocus autocomplete="username" required>
+      <label>Password</label><input name="password" type="password" autocomplete="current-password" required>
+      <p><button class="btn big" style="width:100%">Log in</button></p>
+    </form>
+  </div>
+</div>
+{% endblock %}
